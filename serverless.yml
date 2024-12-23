@@ -1,0 +1,160 @@
+service: jesus-reto
+frameworkVersion: '4'
+
+provider:
+  name: aws
+  runtime: java17
+  region: us-east-2
+  stage: dev
+  memorySize: 512
+  timeout: 10
+  environment:
+    USERS_TABLE: UsersTable
+    SNS_TOPIC_ARN: !Ref EmailTopic
+    EMAIL_TOPIC_ARN: !Ref EmailTopic
+    USER_QUEUE_URL: !Ref UserQueue
+    SENDER_EMAIL: "jesus.pabon@pragma.com.co"
+
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - sqs:SendMessage
+          Resource:
+            - !GetAtt UserQueue.Arn
+
+        - Effect: Allow
+          Action:
+            - dynamodb:PutItem
+            - dynamodb:GetItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - dynamodb:Query
+          Resource:
+            - !Sub "arn:aws:dynamodb:${self:provider.region}:*:table/UsersTable"
+
+        - Effect: Allow
+          Action:
+            - sns:Publish
+          Resource:
+            - !Ref EmailTopic
+
+        - Effect: Allow
+          Action:
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:GetQueueAttributes
+          Resource:
+            - !GetAtt UserQueue.Arn
+
+functions:
+  getUsers:
+    handler: org.example.users.handler.GetUsersHandler
+    events:
+      - httpApi:
+          path: /users
+          method: get
+
+  createUser:
+    handler: org.example.users.handler.CreateUserHandler
+    events:
+      - httpApi:
+          path: /users
+          method: post
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - sqs:SendMessage
+        Resource: !GetAtt UserQueue.Arn
+
+  updateUser:
+    handler: org.example.users.handler.UpdateUserHandler
+    events:
+      - httpApi:
+          path: /users/{id}
+          method: put
+
+  deleteUser:
+    handler: org.example.users.handler.DeleteUserHandler
+    events:
+      - httpApi:
+          path: /users/{id}
+          method: delete
+
+  sendEmail:
+    handler: org.example.users.handler.SendEmailHandler
+    events:
+      - sqs:
+          arn:
+            Fn::GetAtt:
+              - UserQueue
+              - Arn
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - sns:Publish
+        Resource: !Ref EmailTopic
+
+package:
+  individually: true
+  artifact: target/serverless-demo-1.0-SNAPSHOT.jar
+
+resources:
+  Resources:
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: UsersTable
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    EmailTopic:
+      Type: AWS::SNS::Topic
+      Properties:
+        TopicName: UsersEmailTopic
+
+    EmailSubscription:
+      Type: AWS::SNS::Subscription
+      Properties:
+        Endpoint: "jesus.pabon@pragma.com.co"
+        Protocol: email
+        TopicArn: !Ref EmailTopic
+
+    UserQueue:
+      Type: AWS::SQS::Queue
+      Properties:
+        QueueName: UserQueue
+
+    QueuePolicy:
+      Type: AWS::SQS::QueuePolicy
+      Properties:
+        Queues:
+          - !Ref UserQueue
+        PolicyDocument:
+          Version: "2012-10-17"
+          Statement:
+            - Effect: Allow
+              Principal: "*"
+              Action: sqs:SendMessage
+              Resource: !GetAtt UserQueue.Arn
+              Condition:
+                ArnEquals:
+                  "aws:SourceArn":
+                    Fn::Sub: "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:jesus-reto-dev-createUser"
+
+  Outputs:
+    EmailTopicArn:
+      Value: !Ref EmailTopic
+      Export:
+        Name: EmailTopicArn
+    UserQueueUrl:
+      Value: !Ref UserQueue
+      Export:
+        Name: UserQueueUrl

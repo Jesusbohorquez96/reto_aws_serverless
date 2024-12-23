@@ -1,0 +1,1246 @@
+{
+  "service": {
+    "service": "jesus-reto",
+    "serviceObject": {
+      "name": "jesus-reto"
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "java17",
+      "region": "us-east-2",
+      "stage": "dev",
+      "memorySize": 512,
+      "timeout": 10,
+      "environment": {
+        "USERS_TABLE": "UsersTable",
+        "SNS_TOPIC_ARN": {
+          "Ref": "EmailTopic"
+        },
+        "EMAIL_TOPIC_ARN": {
+          "Ref": "EmailTopic"
+        },
+        "USER_QUEUE_URL": {
+          "Ref": "UserQueue"
+        },
+        "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+      },
+      "iam": {
+        "role": {
+          "statements": [
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:SendMessage"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserQueue",
+                    "Arn"
+                  ]
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "dynamodb:PutItem",
+                "dynamodb:GetItem",
+                "dynamodb:UpdateItem",
+                "dynamodb:DeleteItem",
+                "dynamodb:Scan",
+                "dynamodb:Query"
+              ],
+              "Resource": [
+                {
+                  "Fn::Sub": "arn:aws:dynamodb:us-east-2:*:table/UsersTable"
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sns:Publish"
+              ],
+              "Resource": [
+                {
+                  "Ref": "EmailTopic"
+                }
+              ]
+            },
+            {
+              "Effect": "Allow",
+              "Action": [
+                "sqs:ReceiveMessage",
+                "sqs:DeleteMessage",
+                "sqs:GetQueueAttributes"
+              ],
+              "Resource": [
+                {
+                  "Fn::GetAtt": [
+                    "UserQueue",
+                    "Arn"
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      },
+      "versionFunctions": true,
+      "compiledCloudFormationTemplate": {
+        "AWSTemplateFormatVersion": "2010-09-09",
+        "Description": "The AWS CloudFormation template for this Serverless application",
+        "Resources": {
+          "GetUsersLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jesus-reto-dev-getUsers"
+            }
+          },
+          "CreateUserLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jesus-reto-dev-createUser"
+            }
+          },
+          "UpdateUserLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jesus-reto-dev-updateUser"
+            }
+          },
+          "DeleteUserLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jesus-reto-dev-deleteUser"
+            }
+          },
+          "SendEmailLogGroup": {
+            "Type": "AWS::Logs::LogGroup",
+            "Properties": {
+              "LogGroupName": "/aws/lambda/jesus-reto-dev-sendEmail"
+            }
+          },
+          "IamRoleLambdaExecution": {
+            "Type": "AWS::IAM::Role",
+            "Properties": {
+              "AssumeRolePolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": {
+                      "Service": [
+                        "lambda.amazonaws.com"
+                      ]
+                    },
+                    "Action": [
+                      "sts:AssumeRole"
+                    ]
+                  }
+                ]
+              },
+              "Policies": [
+                {
+                  "PolicyName": {
+                    "Fn::Join": [
+                      "-",
+                      [
+                        "jesus-reto",
+                        "dev",
+                        "lambda"
+                      ]
+                    ]
+                  },
+                  "PolicyDocument": {
+                    "Version": "2012-10-17",
+                    "Statement": [
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:CreateLogStream",
+                          "logs:CreateLogGroup",
+                          "logs:TagResource"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jesus-reto-dev*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "logs:PutLogEvents"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/jesus-reto-dev*:*:*"
+                          }
+                        ]
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][0]"
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][1]"
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][2]"
+                      },
+                      {
+                        "$ref": "$[\"service\"][\"provider\"][\"iam\"][\"role\"][\"statements\"][3]"
+                      },
+                      {
+                        "Effect": "Allow",
+                        "Action": [
+                          "sqs:ReceiveMessage",
+                          "sqs:DeleteMessage",
+                          "sqs:GetQueueAttributes"
+                        ],
+                        "Resource": [
+                          {
+                            "Fn::GetAtt": [
+                              "UserQueue",
+                              "Arn"
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                }
+              ],
+              "Path": "/",
+              "RoleName": {
+                "Fn::Join": [
+                  "-",
+                  [
+                    "jesus-reto",
+                    "dev",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    "lambdaRole"
+                  ]
+                ]
+              }
+            }
+          },
+          "GetUsersLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+                "S3Key": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z/serverless-demo-1.0-SNAPSHOT.jar"
+              },
+              "Handler": "org.example.users.handler.GetUsersHandler",
+              "Runtime": "java17",
+              "FunctionName": "jesus-reto-dev-getUsers",
+              "MemorySize": 512,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "USERS_TABLE": "UsersTable",
+                  "SNS_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"SNS_TOPIC_ARN\"]"
+                  },
+                  "EMAIL_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"EMAIL_TOPIC_ARN\"]"
+                  },
+                  "USER_QUEUE_URL": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_QUEUE_URL\"]"
+                  },
+                  "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "GetUsersLogGroup"
+            ]
+          },
+          "CreateUserLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+                "S3Key": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z/serverless-demo-1.0-SNAPSHOT.jar"
+              },
+              "Handler": "org.example.users.handler.CreateUserHandler",
+              "Runtime": "java17",
+              "FunctionName": "jesus-reto-dev-createUser",
+              "MemorySize": 512,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "USERS_TABLE": "UsersTable",
+                  "SNS_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"SNS_TOPIC_ARN\"]"
+                  },
+                  "EMAIL_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"EMAIL_TOPIC_ARN\"]"
+                  },
+                  "USER_QUEUE_URL": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_QUEUE_URL\"]"
+                  },
+                  "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "CreateUserLogGroup"
+            ]
+          },
+          "UpdateUserLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+                "S3Key": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z/serverless-demo-1.0-SNAPSHOT.jar"
+              },
+              "Handler": "org.example.users.handler.UpdateUserHandler",
+              "Runtime": "java17",
+              "FunctionName": "jesus-reto-dev-updateUser",
+              "MemorySize": 512,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "USERS_TABLE": "UsersTable",
+                  "SNS_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"SNS_TOPIC_ARN\"]"
+                  },
+                  "EMAIL_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"EMAIL_TOPIC_ARN\"]"
+                  },
+                  "USER_QUEUE_URL": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_QUEUE_URL\"]"
+                  },
+                  "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "UpdateUserLogGroup"
+            ]
+          },
+          "DeleteUserLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+                "S3Key": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z/serverless-demo-1.0-SNAPSHOT.jar"
+              },
+              "Handler": "org.example.users.handler.DeleteUserHandler",
+              "Runtime": "java17",
+              "FunctionName": "jesus-reto-dev-deleteUser",
+              "MemorySize": 512,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "USERS_TABLE": "UsersTable",
+                  "SNS_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"SNS_TOPIC_ARN\"]"
+                  },
+                  "EMAIL_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"EMAIL_TOPIC_ARN\"]"
+                  },
+                  "USER_QUEUE_URL": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_QUEUE_URL\"]"
+                  },
+                  "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "DeleteUserLogGroup"
+            ]
+          },
+          "SendEmailLambdaFunction": {
+            "Type": "AWS::Lambda::Function",
+            "Properties": {
+              "Code": {
+                "S3Bucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+                "S3Key": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z/serverless-demo-1.0-SNAPSHOT.jar"
+              },
+              "Handler": "org.example.users.handler.SendEmailHandler",
+              "Runtime": "java17",
+              "FunctionName": "jesus-reto-dev-sendEmail",
+              "MemorySize": 512,
+              "Timeout": 10,
+              "Environment": {
+                "Variables": {
+                  "USERS_TABLE": "UsersTable",
+                  "SNS_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"SNS_TOPIC_ARN\"]"
+                  },
+                  "EMAIL_TOPIC_ARN": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"EMAIL_TOPIC_ARN\"]"
+                  },
+                  "USER_QUEUE_URL": {
+                    "$ref": "$[\"service\"][\"provider\"][\"environment\"][\"USER_QUEUE_URL\"]"
+                  },
+                  "SENDER_EMAIL": "jesus.pabon@pragma.com.co"
+                }
+              },
+              "Role": {
+                "Fn::GetAtt": [
+                  "IamRoleLambdaExecution",
+                  "Arn"
+                ]
+              }
+            },
+            "DependsOn": [
+              "SendEmailLogGroup"
+            ]
+          },
+          "GetUsersLambdaVersionduvTapKb8RohcqjBeHsNLBmhM8WBQ7en8fo35JT7Q": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "GetUsersLambdaFunction"
+              },
+              "CodeSha256": "3Crj3gd955Kh+zru7EPuwRjRmPLRZghzOgDYUI4ItkI="
+            }
+          },
+          "CreateUserLambdaVersion5g5dMaNsJxCyD5QEE1PzrW1Rq7HM05tsS7ovZzQpto0": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "CreateUserLambdaFunction"
+              },
+              "CodeSha256": "3Crj3gd955Kh+zru7EPuwRjRmPLRZghzOgDYUI4ItkI="
+            }
+          },
+          "UpdateUserLambdaVersionq13jl9qdzT4f6e0CdwyFs0iFPJowBs34TMf4UhXWM": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "UpdateUserLambdaFunction"
+              },
+              "CodeSha256": "3Crj3gd955Kh+zru7EPuwRjRmPLRZghzOgDYUI4ItkI="
+            }
+          },
+          "DeleteUserLambdaVersionUWBQmLFM1VeEnF7jSN7lW0BQljvNLJ5NedTmLG3s": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "DeleteUserLambdaFunction"
+              },
+              "CodeSha256": "3Crj3gd955Kh+zru7EPuwRjRmPLRZghzOgDYUI4ItkI="
+            }
+          },
+          "SendEmailLambdaVersionx2AILVQ7d402d0TQVt5Cu9Sb6g6gWslPTmXaCqdM": {
+            "Type": "AWS::Lambda::Version",
+            "DeletionPolicy": "Retain",
+            "Properties": {
+              "FunctionName": {
+                "Ref": "SendEmailLambdaFunction"
+              },
+              "CodeSha256": "3Crj3gd955Kh+zru7EPuwRjRmPLRZghzOgDYUI4ItkI="
+            }
+          },
+          "SendEmailEventSourceMappingSQSUserQueue": {
+            "Type": "AWS::Lambda::EventSourceMapping",
+            "DependsOn": [
+              "IamRoleLambdaExecution"
+            ],
+            "Properties": {
+              "BatchSize": 10,
+              "EventSourceArn": {
+                "Fn::GetAtt": [
+                  "UserQueue",
+                  "Arn"
+                ]
+              },
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "SendEmailLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Enabled": true
+            }
+          },
+          "HttpApi": {
+            "Type": "AWS::ApiGatewayV2::Api",
+            "Properties": {
+              "Name": "dev-jesus-reto",
+              "ProtocolType": "HTTP"
+            }
+          },
+          "HttpApiStage": {
+            "Type": "AWS::ApiGatewayV2::Stage",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "StageName": "$default",
+              "AutoDeploy": true,
+              "DefaultRouteSettings": {
+                "DetailedMetricsEnabled": false
+              }
+            }
+          },
+          "GetUsersLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "GetUsersLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationGetUsers": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"GetUsersLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteGetUsers": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "GET /users",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationGetUsers"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationGetUsers"
+          },
+          "CreateUserLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "CreateUserLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationCreateUser": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"CreateUserLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePostUsers": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "POST /users",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationCreateUser"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationCreateUser"
+          },
+          "UpdateUserLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "UpdateUserLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationUpdateUser": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"UpdateUserLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRoutePutUsersIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "PUT /users/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationUpdateUser"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationUpdateUser"
+          },
+          "DeleteUserLambdaPermissionHttpApi": {
+            "Type": "AWS::Lambda::Permission",
+            "Properties": {
+              "FunctionName": {
+                "Fn::GetAtt": [
+                  "DeleteUserLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "Action": "lambda:InvokeFunction",
+              "Principal": "apigateway.amazonaws.com",
+              "SourceArn": {
+                "Fn::Join": [
+                  "",
+                  [
+                    "arn:",
+                    {
+                      "Ref": "AWS::Partition"
+                    },
+                    ":execute-api:",
+                    {
+                      "Ref": "AWS::Region"
+                    },
+                    ":",
+                    {
+                      "Ref": "AWS::AccountId"
+                    },
+                    ":",
+                    {
+                      "Ref": "HttpApi"
+                    },
+                    "/*"
+                  ]
+                ]
+              }
+            }
+          },
+          "HttpApiIntegrationDeleteUser": {
+            "Type": "AWS::ApiGatewayV2::Integration",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "IntegrationType": "AWS_PROXY",
+              "IntegrationUri": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"DeleteUserLambdaPermissionHttpApi\"][\"Properties\"][\"FunctionName\"]"
+              },
+              "PayloadFormatVersion": "2.0",
+              "TimeoutInMillis": 30000
+            }
+          },
+          "HttpApiRouteDeleteUsersIdVar": {
+            "Type": "AWS::ApiGatewayV2::Route",
+            "Properties": {
+              "ApiId": {
+                "Ref": "HttpApi"
+              },
+              "RouteKey": "DELETE /users/{id}",
+              "Target": {
+                "Fn::Join": [
+                  "/",
+                  [
+                    "integrations",
+                    {
+                      "Ref": "HttpApiIntegrationDeleteUser"
+                    }
+                  ]
+                ]
+              }
+            },
+            "DependsOn": "HttpApiIntegrationDeleteUser"
+          },
+          "UsersTable": {
+            "Type": "AWS::DynamoDB::Table",
+            "Properties": {
+              "TableName": "UsersTable",
+              "AttributeDefinitions": [
+                {
+                  "AttributeName": "id",
+                  "AttributeType": "S"
+                }
+              ],
+              "KeySchema": [
+                {
+                  "AttributeName": "id",
+                  "KeyType": "HASH"
+                }
+              ],
+              "BillingMode": "PAY_PER_REQUEST"
+            }
+          },
+          "EmailTopic": {
+            "Type": "AWS::SNS::Topic",
+            "Properties": {
+              "TopicName": "UsersEmailTopic"
+            }
+          },
+          "EmailSubscription": {
+            "Type": "AWS::SNS::Subscription",
+            "Properties": {
+              "Endpoint": "jesus.pabon@pragma.com.co",
+              "Protocol": "email",
+              "TopicArn": {
+                "Ref": "EmailTopic"
+              }
+            }
+          },
+          "UserQueue": {
+            "Type": "AWS::SQS::Queue",
+            "Properties": {
+              "QueueName": "UserQueue"
+            }
+          },
+          "QueuePolicy": {
+            "Type": "AWS::SQS::QueuePolicy",
+            "Properties": {
+              "Queues": [
+                {
+                  "Ref": "UserQueue"
+                }
+              ],
+              "PolicyDocument": {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Principal": "*",
+                    "Action": "sqs:SendMessage",
+                    "Resource": {
+                      "Fn::GetAtt": [
+                        "UserQueue",
+                        "Arn"
+                      ]
+                    },
+                    "Condition": {
+                      "ArnEquals": {
+                        "aws:SourceArn": {
+                          "Fn::Sub": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:jesus-reto-dev-createUser"
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "Outputs": {
+          "ServerlessDeploymentBucketName": {
+            "Value": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+            "Export": {
+              "Name": "sls-jesus-reto-dev-ServerlessDeploymentBucketName"
+            }
+          },
+          "GetUsersLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "GetUsersLambdaVersionduvTapKb8RohcqjBeHsNLBmhM8WBQ7en8fo35JT7Q"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-GetUsersLambdaFunctionQualifiedArn"
+            }
+          },
+          "CreateUserLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "CreateUserLambdaVersion5g5dMaNsJxCyD5QEE1PzrW1Rq7HM05tsS7ovZzQpto0"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-CreateUserLambdaFunctionQualifiedArn"
+            }
+          },
+          "UpdateUserLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "UpdateUserLambdaVersionq13jl9qdzT4f6e0CdwyFs0iFPJowBs34TMf4UhXWM"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-UpdateUserLambdaFunctionQualifiedArn"
+            }
+          },
+          "DeleteUserLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "DeleteUserLambdaVersionUWBQmLFM1VeEnF7jSN7lW0BQljvNLJ5NedTmLG3s"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-DeleteUserLambdaFunctionQualifiedArn"
+            }
+          },
+          "SendEmailLambdaFunctionQualifiedArn": {
+            "Description": "Current Lambda function version",
+            "Value": {
+              "Ref": "SendEmailLambdaVersionx2AILVQ7d402d0TQVt5Cu9Sb6g6gWslPTmXaCqdM"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-SendEmailLambdaFunctionQualifiedArn"
+            }
+          },
+          "HttpApiId": {
+            "Description": "Id of the HTTP API",
+            "Value": {
+              "Ref": "HttpApi"
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-HttpApiId"
+            }
+          },
+          "HttpApiUrl": {
+            "Description": "URL of the HTTP API",
+            "Value": {
+              "Fn::Join": [
+                "",
+                [
+                  "https://",
+                  {
+                    "Ref": "HttpApi"
+                  },
+                  ".execute-api.",
+                  {
+                    "Ref": "AWS::Region"
+                  },
+                  ".",
+                  {
+                    "Ref": "AWS::URLSuffix"
+                  }
+                ]
+              ]
+            },
+            "Export": {
+              "Name": "sls-jesus-reto-dev-HttpApiUrl"
+            }
+          },
+          "EmailTopicArn": {
+            "Value": {
+              "Ref": "EmailTopic"
+            },
+            "Export": {
+              "Name": "EmailTopicArn"
+            }
+          },
+          "UserQueueUrl": {
+            "Value": {
+              "Ref": "UserQueue"
+            },
+            "Export": {
+              "Name": "UserQueueUrl"
+            }
+          }
+        }
+      },
+      "vpc": {}
+    },
+    "pluginsData": {},
+    "functions": {
+      "getUsers": {
+        "handler": "org.example.users.handler.GetUsersHandler",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/users",
+              "method": "get"
+            },
+            "resolvedMethod": "GET",
+            "resolvedPath": "/users"
+          }
+        ],
+        "name": "jesus-reto-dev-getUsers",
+        "package": {
+          "artifact": "C:\\Users\\jesus.pabon_pragma\\Desktop\\serverless-demo\\target\\serverless-demo-1.0-SNAPSHOT.jar"
+        },
+        "memory": 512,
+        "timeout": 10,
+        "runtime": "java17",
+        "vpc": {},
+        "versionLogicalId": "GetUsersLambdaVersionduvTapKb8RohcqjBeHsNLBmhM8WBQ7en8fo35JT7Q"
+      },
+      "createUser": {
+        "handler": "org.example.users.handler.CreateUserHandler",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/users",
+              "method": "post"
+            },
+            "resolvedMethod": "POST",
+            "resolvedPath": "/users"
+          }
+        ],
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sqs:SendMessage"
+            ],
+            "Resource": {
+              "Fn::GetAtt": [
+                "UserQueue",
+                "Arn"
+              ]
+            }
+          }
+        ],
+        "name": "jesus-reto-dev-createUser",
+        "package": {
+          "artifact": "C:\\Users\\jesus.pabon_pragma\\Desktop\\serverless-demo\\target\\serverless-demo-1.0-SNAPSHOT.jar"
+        },
+        "memory": 512,
+        "timeout": 10,
+        "runtime": "java17",
+        "vpc": {},
+        "versionLogicalId": "CreateUserLambdaVersion5g5dMaNsJxCyD5QEE1PzrW1Rq7HM05tsS7ovZzQpto0"
+      },
+      "updateUser": {
+        "handler": "org.example.users.handler.UpdateUserHandler",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/users/{id}",
+              "method": "put"
+            },
+            "resolvedMethod": "PUT",
+            "resolvedPath": "/users/{id}"
+          }
+        ],
+        "name": "jesus-reto-dev-updateUser",
+        "package": {
+          "artifact": "C:\\Users\\jesus.pabon_pragma\\Desktop\\serverless-demo\\target\\serverless-demo-1.0-SNAPSHOT.jar"
+        },
+        "memory": 512,
+        "timeout": 10,
+        "runtime": "java17",
+        "vpc": {},
+        "versionLogicalId": "UpdateUserLambdaVersionq13jl9qdzT4f6e0CdwyFs0iFPJowBs34TMf4UhXWM"
+      },
+      "deleteUser": {
+        "handler": "org.example.users.handler.DeleteUserHandler",
+        "events": [
+          {
+            "httpApi": {
+              "path": "/users/{id}",
+              "method": "delete"
+            },
+            "resolvedMethod": "DELETE",
+            "resolvedPath": "/users/{id}"
+          }
+        ],
+        "name": "jesus-reto-dev-deleteUser",
+        "package": {
+          "artifact": "C:\\Users\\jesus.pabon_pragma\\Desktop\\serverless-demo\\target\\serverless-demo-1.0-SNAPSHOT.jar"
+        },
+        "memory": 512,
+        "timeout": 10,
+        "runtime": "java17",
+        "vpc": {},
+        "versionLogicalId": "DeleteUserLambdaVersionUWBQmLFM1VeEnF7jSN7lW0BQljvNLJ5NedTmLG3s"
+      },
+      "sendEmail": {
+        "handler": "org.example.users.handler.SendEmailHandler",
+        "events": [
+          {
+            "sqs": {
+              "arn": {
+                "$ref": "$[\"service\"][\"provider\"][\"compiledCloudFormationTemplate\"][\"Resources\"][\"IamRoleLambdaExecution\"][\"Properties\"][\"Policies\"][0][\"PolicyDocument\"][\"Statement\"][6][\"Resource\"][0]"
+              }
+            }
+          }
+        ],
+        "iamRoleStatements": [
+          {
+            "Effect": "Allow",
+            "Action": [
+              "sns:Publish"
+            ],
+            "Resource": {
+              "Ref": "EmailTopic"
+            }
+          }
+        ],
+        "name": "jesus-reto-dev-sendEmail",
+        "package": {
+          "artifact": "C:\\Users\\jesus.pabon_pragma\\Desktop\\serverless-demo\\target\\serverless-demo-1.0-SNAPSHOT.jar"
+        },
+        "memory": 512,
+        "timeout": 10,
+        "runtime": "java17",
+        "vpc": {},
+        "versionLogicalId": "SendEmailLambdaVersionx2AILVQ7d402d0TQVt5Cu9Sb6g6gWslPTmXaCqdM"
+      }
+    },
+    "resources": {
+      "Resources": {
+        "UsersTable": {
+          "Type": "AWS::DynamoDB::Table",
+          "Properties": {
+            "TableName": "UsersTable",
+            "AttributeDefinitions": [
+              {
+                "AttributeName": "id",
+                "AttributeType": "S"
+              }
+            ],
+            "KeySchema": [
+              {
+                "AttributeName": "id",
+                "KeyType": "HASH"
+              }
+            ],
+            "BillingMode": "PAY_PER_REQUEST"
+          }
+        },
+        "EmailTopic": {
+          "Type": "AWS::SNS::Topic",
+          "Properties": {
+            "TopicName": "UsersEmailTopic"
+          }
+        },
+        "EmailSubscription": {
+          "Type": "AWS::SNS::Subscription",
+          "Properties": {
+            "Endpoint": "jesus.pabon@pragma.com.co",
+            "Protocol": "email",
+            "TopicArn": {
+              "Ref": "EmailTopic"
+            }
+          }
+        },
+        "UserQueue": {
+          "Type": "AWS::SQS::Queue",
+          "Properties": {
+            "QueueName": "UserQueue"
+          }
+        },
+        "QueuePolicy": {
+          "Type": "AWS::SQS::QueuePolicy",
+          "Properties": {
+            "Queues": [
+              {
+                "Ref": "UserQueue"
+              }
+            ],
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": "*",
+                  "Action": "sqs:SendMessage",
+                  "Resource": {
+                    "Fn::GetAtt": [
+                      "UserQueue",
+                      "Arn"
+                    ]
+                  },
+                  "Condition": {
+                    "ArnEquals": {
+                      "aws:SourceArn": {
+                        "Fn::Sub": "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:jesus-reto-dev-createUser"
+                      }
+                    }
+                  }
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Outputs": {
+        "EmailTopicArn": {
+          "Value": {
+            "Ref": "EmailTopic"
+          },
+          "Export": {
+            "Name": "EmailTopicArn"
+          }
+        },
+        "UserQueueUrl": {
+          "Value": {
+            "Ref": "UserQueue"
+          },
+          "Export": {
+            "Name": "UserQueueUrl"
+          }
+        }
+      }
+    },
+    "configValidationMode": "warn",
+    "serviceFilename": "serverless.yml",
+    "initialServerlessConfig": {
+      "service": "jesus-reto",
+      "frameworkVersion": "4",
+      "provider": {
+        "$ref": "$[\"service\"][\"provider\"]"
+      },
+      "functions": {
+        "$ref": "$[\"service\"][\"functions\"]"
+      },
+      "package": {
+        "individually": true,
+        "artifact": "target/serverless-demo-1.0-SNAPSHOT.jar",
+        "artifactsS3KeyDirname": "serverless/jesus-reto/dev/code-artifacts",
+        "deploymentBucket": "serverless-framework-deployments-us-east-2-b08bc66b-3af8",
+        "artifactDirectoryName": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z"
+      },
+      "resources": {
+        "$ref": "$[\"service\"][\"resources\"]"
+      }
+    },
+    "appId": null,
+    "orgId": null,
+    "layers": {}
+  },
+  "package": {
+    "individually": true,
+    "artifactDirectoryName": "serverless/jesus-reto/dev/1734979107441-2024-12-23T18:38:27.441Z",
+    "artifact": "target/serverless-demo-1.0-SNAPSHOT.jar"
+  }
+}
